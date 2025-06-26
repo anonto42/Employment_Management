@@ -1,4 +1,4 @@
-import "./global.css"
+import "./global.css";
 import React from 'react';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -10,17 +10,18 @@ const Stack = createNativeStackNavigator();
 
 const App = () => {
   return (
-    <NavigationContainer>
-      <StatusBar translucent={false} backgroundColor="red" barStyle="dark-content" />
-
-      <Stack.Navigator 
-          initialRouteName="Auth" 
+    <>
+      <StatusBar backgroundColor="#dc2626" barStyle="dark-content" translucent={false} />
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Auth"
           screenOptions={{ headerShown: false }}
         >
-        <Stack.Screen name="Auth" component={Auth} />
-        <Stack.Screen name="Details" component={DetailsScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+          <Stack.Screen name="Auth" component={Auth} />
+          <Stack.Screen name="Details" component={DetailsScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
   );
 };
 
