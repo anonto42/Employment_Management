@@ -10,6 +10,7 @@ import {
   Image
 } from 'react-native';
 import * as Burnt from "burnt";
+import { useNavigation } from '@react-navigation/native';
 //@ts-ignore
 import Logo from "../../static/assets/logo.png";
 //@ts-ignore
@@ -21,6 +22,7 @@ import QrCode from "../../static/assets/QR.png"
 import LoadingScreen from '../../components/Loader';
 
 const Auth = () => {
+  const navigation = useNavigation();
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [userId, setUserId] = useState("");
@@ -51,18 +53,22 @@ const Auth = () => {
       setLoading(false);
       return;
     }
-
     setTimeout(() => {
       setLoading(false);
       Burnt.toast({
         title: 'Login Successful!',
         message: 'You are successfully logged into the Employment Engagement Platform.'
       });
-      setUserId("");
-      setPassword("");
+      
     }, 3000);
+    setUserId("");
+    setPassword("");
 
-    
+    setTimeout(() => {
+      
+          //@ts-ignore
+          navigation.navigate("Success")
+    }, 3000);
   };
 
   return (
