@@ -4,7 +4,7 @@ import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Auth from './pages/auth/Auth';
-import DetailsScreen from './pages/demo/Details';
+import Success from "./pages/auth/Success";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,7 +18,7 @@ const App = () => {
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="Auth" component={Auth} />
-          <Stack.Screen name="Details" component={DetailsScreen} />
+          <Stack.Screen name="Success" component={Success} />
         </Stack.Navigator>
       </NavigationContainer>
     </>
