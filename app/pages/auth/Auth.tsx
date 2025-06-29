@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import XEyes from '../../static/icons/x-eyes.png';
 import QrCode from '../../static/assets/QR.png';
 import LoadingScreen from '../../components/Loader';
 import axios from 'axios';
+import DeviceInfo from 'react-native-device-info';
 
 const Auth = () => {
   const navigation = useNavigation();
@@ -33,10 +34,55 @@ const Auth = () => {
   const [userIdError, setUserIdError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
+
+
+  useEffect(()=>{
+    try {
+
+      (async()=>{
+
+        const uniqueId = await DeviceInfo.getUniqueId();
+        const userRef = await AsyncStorage.getItem('userRef');
+        const brand = await DeviceInfo.getBrand();
+        const model = await DeviceInfo.getModel();
+        const systemName = await DeviceInfo.getSystemName();
+        const systemVersion = await DeviceInfo.getSystemVersion();
+
+        const data = {
+          userRef,
+          deviceId: uniqueId,
+          deviceInfo: {
+            model,
+            os: systemName,
+            version: systemVersion,
+            brand,
+          },
+        };
+
+        await axios.post(
+          'https://employment-engage.vercel.app/api/device',
+          data,
+          { timeout: 10000 }
+        );
+
+        toast({
+          title: 'Successfully registered!',
+          message: 'Device info sent to server.',
+        });
+
+      })();
+      
+    } catch (error) {
+      console.log(error)
+    }
+  },[])
+
   const handelLogin = async () => {
     setLoading(true);
     setUserIdError('');
     setPasswordError('');
+    const uniqueId = await DeviceInfo.getUniqueId();
+
 
     const userIdRegex = /^[a-zA-Z0-9._-]{3,}$/;
     const isUserIdValid = userIdRegex.test(userId);
@@ -54,9 +100,11 @@ const Auth = () => {
       return;
     }
 
+
     const authData = {
       userId: userId,
       password: password,
+      deviceId: uniqueId
     };
 
     try {

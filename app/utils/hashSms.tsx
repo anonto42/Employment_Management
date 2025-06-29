@@ -7,12 +7,12 @@ interface SMSPayloadInput {
 }
 
 interface SMSPayload extends SMSPayloadInput {
-  timestamp: string;
+  timestamp: number;
   smsHash: string;
 }
 
 export const prepareSMSPayload = ({ deviceId, from, message }: SMSPayloadInput): SMSPayload => {
-  const timestamp = new Date().toISOString(); 
+  const timestamp = Date.now();; 
 
   const rawString = `${deviceId}|${from}|${message}|${timestamp}`;
 
