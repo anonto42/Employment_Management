@@ -85,24 +85,6 @@ android {
         versionCode 1
         versionName "1.0"
     }
-    // signingConfigs {
-    //     debug {
-    //         storeFile file('debug.keystore')
-    //         storePassword 'android'
-    //         keyAlias 'androiddebugkey'
-    //         keyPassword 'android'
-    //     }
-    // }
-    // buildTypes {
-    //     debug {
-    //         signingConfig signingConfigs.debug
-    //     }
-    //     release {
-    //         minifyEnabled enableProguardInReleaseBuilds
-    //         proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-    //     }
-    // }
-
     signingConfigs {
         release {
             if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
@@ -111,18 +93,34 @@ android {
                 keyAlias MYAPP_UPLOAD_KEY_ALIAS
                 keyPassword MYAPP_UPLOAD_KEY_PASSWORD
             }
+<<<<<<< HEAD
+=======
+        }
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+>>>>>>> 9f17cf0912d4fdc1890463561295ad440b6e6aed
         }
     }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+<<<<<<< HEAD
             // minifyEnabled true
             // shrinkResources true
             // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+=======
+>>>>>>> 9f17cf0912d4fdc1890463561295ad440b6e6aed
         }
     }
+
 }
 
 dependencies {
