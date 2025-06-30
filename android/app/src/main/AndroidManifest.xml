@@ -4,8 +4,6 @@
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- (Optional) Required for running service in the background for Android 12+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
 
